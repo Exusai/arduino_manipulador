@@ -1,5 +1,5 @@
 #include <ros.h>
-#include <std_msgs/Float32.h>>
+#include <std_msgs/Float32.h>
 #include <AccelStepper.h>
 
 // code for arduino nano
@@ -37,12 +37,6 @@ float stepsPerRev4 = 200;
 // define pin for emergency stop
 #define stop 12
 
-// init stepper motors
-AccelStepper stepper1(1, step1, dir1);
-AccelStepper stepper2(1, step2, dir2);
-AccelStepper stepper3(1, step3, dir3);
-AccelStepper stepper4(1, step4, dir4);
-
 // initialy the joint angles are set to 0 and height to 0
 float theta1 = 0;
 float theta2 = 0;
@@ -52,18 +46,10 @@ float height = 0;
 // control for the gripper, 0 is open and 1 is closed
 float gripper = 0;
 
-ros::NodeHandle nh;
-
 // functions that takes a target in degrees and converts it to steps
 // using the gear ratio and the number of steps per revolution
 long targetToSteps(float target, float ratio, float stepsPerRev) {
-  long steps = (target * ratio * stepsPerRev) / 360;
-  char log_msg[35];
-  char result[8]; // Buffer big enough for 7-character float
-  dtostrf(steps, 6, 2, result); // Leave room for too large numbers!
-  sprintf(log_msg,"Target TO STEPS: %s", result);
-  nh.loginfo(log_msg);
-  return steps;
+  return (target * ratio * stepsPerRev) / 360;
 }
 
 // function that returns the number of steps needed to move the ar to the target height
@@ -73,7 +59,19 @@ long heightToSteps(float target, float ratio, float stepsPerMeter) {
   return (target * ratio * stepsPerMeter);
 }
 
+float readUltrasonic() {
+  float duration, distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2;
+  return distance;
+}
 
+ros::NodeHandle nh;
 
 // function to read arm pose from the topic /arm_pose_target and set the target angles and height
 void readE0Target(const std_msgs::Float32& msg) {
@@ -128,6 +126,13 @@ ros::Subscriber<std_msgs::Float32> sub3("arm_pose_target_re/q3", &readE2Target);
 ros::Subscriber<std_msgs::Float32> sub4("arm_pose_target_re/d0", &readE3Target);
 ros::Subscriber<std_msgs::Float32> sub5("arm_pose_target_re/succ", &readE4Target);
 
+
+// init stepper motors
+AccelStepper stepper1(1, step1, dir1);
+AccelStepper stepper2(1, step2, dir2);
+AccelStepper stepper3(1, step3, dir3);
+AccelStepper stepper4(1, step4, dir4);
+
 void setup() {
   //Serial.begin(57600);
   nh.loginfo("Setup Start");
@@ -161,20 +166,17 @@ void setup() {
   pinMode(stop, INPUT);
 
   // set the pins for the ultrasonic sensor as outputs and inputs
-  /* pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT); */
-
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
   // blink the status leds for 1 second
   nh.loginfo("Arduino inicializado");
 }
 
 void loop() {
-  //nh.loginfo("LoopStart");
-  // run the ros node
   nh.spinOnce();
-  // delay (of about 50-250)
-  //delay(10);
+  //float currentHeight = readUltrasonic();
+  delay(10);
 
   stepper1.moveTo(targetToSteps(theta1, ratio1, stepsPerRev1));
   stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
@@ -185,5 +187,4 @@ void loop() {
   stepper2.run();
   stepper3.run();
   stepper4.run();
-
 }
