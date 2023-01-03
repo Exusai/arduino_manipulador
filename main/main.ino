@@ -54,15 +54,9 @@ ros::NodeHandle nh;
 // using the gear ratio and the number of steps per revolution
 long targetToSteps(float target, float ratio, float stepsPerRev) {
   // steps should be (target * ratio * stepsPerRev) / 360 but we need to convert to long
-  float stepsFloat = (target * ratio * stepsPerRev) / 360;
+  double stepsDouble = (target * ratio * stepsPerRev) / 360;
   // we need to round the number of steps to the nearest integer
-  long steps = round(stepsFloat);
-
-  char log_msg[35];
-  char result[8]; // Buffer big enough for 7-character float
-  dtostrf(steps, 8, 0, result); // Leave room for too large numbers!
-  sprintf(log_msg,"Target TO STEPS: %s", result);
-  nh.loginfo(log_msg);
+  long steps = round(stepsDouble);
   return steps;
 }
 
