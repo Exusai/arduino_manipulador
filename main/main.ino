@@ -20,10 +20,6 @@ float stepsPerRev2 = 200;
 float stepsPerRev3 = 200;
 float stepsPerRev4 = 200;
 
-// define the pins for the ultrasonic sensor
-#define trigPin 2
-#define echoPin 3
-
 // define the pins for the 4 stepper motors
 #define step1 4
 #define dir1 5
@@ -57,10 +53,14 @@ ros::NodeHandle nh;
 // functions that takes a target in degrees and converts it to steps
 // using the gear ratio and the number of steps per revolution
 long targetToSteps(float target, float ratio, float stepsPerRev) {
-  long steps = (target * ratio * stepsPerRev) / 360;
+  // steps should be (target * ratio * stepsPerRev) / 360 but we need to convert to long
+  float stepsFloat = (target * ratio * stepsPerRev) / 360;
+  // we need to round the number of steps to the nearest integer
+  long steps = round(stepsFloat);
+
   char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
-  dtostrf(steps, 6, 2, result); // Leave room for too large numbers!
+  dtostrf(steps, 8, 0, result); // Leave room for too large numbers!
   sprintf(log_msg,"Target TO STEPS: %s", result);
   nh.loginfo(log_msg);
   return steps;
