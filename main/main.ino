@@ -1,14 +1,24 @@
 #include <ros.h>
-#include <std_msgs/Float32.h>>
+#include <std_msgs/Float32.h>
+#include <AccelStepper.h>
 
 // code for arduino nano
-// uses 3 potentiometers and one ultrasonic sensor to read de position of the arm
-// The target position for each joint is read from the topic /arm_pose_target
+// uses ultrasonic sensor to read the height of the arm
+// The target position for each joint is read from the topics /arm_pose_target_re/q1, /arm_pose_target_re/q2, /arm_pose_target_re/q3, /arm_pose_target_re/d0, /arm_pose_target_re/succ
+float maxSpeed = 1000; // max speed for the stepper motors
+float maxAccel = 500; // max acceleration for the stepper motors
 
-// define the pins for the potentiometers
-#define pot1 A0
-#define pot2 A1
-#define pot3 A2
+// every motor has its own gear ratio
+float ratio1 = 1;
+float ratio2 = 1; // corresponds to how may rotations of the motor are needed to move 1m up or down
+float ratio3 = 1;
+float ratio4 = 1;
+
+// the number of steps per revolution for each motor
+float stepsPerRev1 = 200;
+float stepsPerRev2 = 200;
+float stepsPerRev3 = 200;
+float stepsPerRev4 = 200;
 
 // define the pins for the ultrasonic sensor
 #define trigPin 2
@@ -27,74 +37,29 @@
 // define pin for emergency stop
 #define stop 12
 
-// gains for the PID controller on each joint
-#define Kp1 0.1
-#define Ki1 0.01
-#define Kd1 0.01
-
-#define Kp2 0.1
-#define Ki2 0.01
-#define Kd2 0.01
-
-#define Kp3 0.1
-#define Ki3 0.01
-#define Kd3 0.01
-
-#define Kp4 0.1
-#define Ki4 0.01
-#define Kd4 0.01
-
 // initialy the joint angles are set to 0 and height to 0
 float theta1 = 0;
 float theta2 = 0;
 float theta3 = 0;
 float height = 0;
 
-// initialize variables for the PID controller and control signals
-float error1 = 0;
-float error2 = 0;
-float error3 = 0;
-float error4 = 0;
-float error1_old = 0;
-float error2_old = 0;
-float error3_old = 0;
-float error4_old = 0;
-float error1_sum = 0;
-float error2_sum = 0;
-float error3_sum = 0;
-float error4_sum = 0;
-float u1 = 0;
-float u2 = 0;
-float u3 = 0;
-float u4 = 0;
-
 // control for the gripper, 0 is open and 1 is closed
 float gripper = 0;
 
-// status leds
-/* #define led1 0
-#define led2 1
-bool led1_state = true;
-bool led2_state = false; */
+// functions that takes a target in degrees and converts it to steps
+// using the gear ratio and the number of steps per revolution
+long targetToSteps(float target, float ratio, float stepsPerRev) {
+  return (target * ratio * stepsPerRev) / 360;
+}
+
+// function that returns the number of steps needed to move the ar to the target height
+// using the gear ratio and the number of steps per meter
+long heightToSteps(float target, float ratio, float stepsPerMeter) {
+  // the height is converted to meters
+  return (target * ratio * stepsPerMeter);
+}
 
 ros::NodeHandle nh;
-
-// on hearing a rosmessage of type ArmPose print the values to the serial monitor
-/* void printMessage(const unity_msgs::ArmPose& msg) {
-  Serial.print("q1: ");
-  Serial.print(msg.q1);
-  Serial.print(" q2: ");
-  Serial.print(msg.q2);
-  Serial.print(" q3: ");
-  Serial.print(msg.q3);
-  Serial.print(" d4: ");
-  Serial.print(msg.d4);
-  Serial.print(" q5: ");
-  Serial.print(msg.q5);
-  Serial.print(" succ: ");
-  Serial.println(msg.succ);
-  nh.loginfo("Nueva posicion recibida");
-} */
 
 // function to read arm pose from the topic /arm_pose_target and set the target angles and height
 void readE0Target(const std_msgs::Float32& msg) {
@@ -142,59 +107,19 @@ void readE4Target(const std_msgs::Float32& msg) {
   nh.loginfo(log_msg);
 }
 
-// function to read the potentiometers and return the angle in degrees
-float readPot(int pin) {
-  float angle = map(analogRead(pin), 0, 1023, 0, 180);
-  return angle;
-}
-
-// function to read the ultrasonic sensor and return the distance in meters
-float readUltrasonic() {
-  float duration, distance;
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
-  distance = duration * 0.034 / 2;
-  return distance;
-}
-
-// function to calculate the control signal for the PID controller
-float PID(float error, float error_old, float error_sum, float Kp, float Ki, float Kd) {
-  float u = Kp * error + Ki * error_sum + Kd * (error - error_old);
-  return u;
-}
-
-// function to convert the control signal to a step signal for the stepper motor
-int step(float u) {
-  int step = 0;
-  if (u > 0) {
-    step = 1;
-  }
-  else if (u < 0) {
-    step = -1;
-  }
-  return step;
-}
-
-// function to set the direction of the stepper motor
-void setDir(int dir, int pin) {
-  if (dir == 1) {
-    digitalWrite(pin, HIGH);
-  }
-  else if (dir == -1) {
-    digitalWrite(pin, LOW);
-  }
-}
-
 // create a subscriber to the topic "arm_pose_target" of type ArmPose
 ros::Subscriber<std_msgs::Float32> sub1("arm_pose_target_re/q1", &readE0Target);
 ros::Subscriber<std_msgs::Float32> sub2("arm_pose_target_re/q2", &readE1Target);
 ros::Subscriber<std_msgs::Float32> sub3("arm_pose_target_re/q3", &readE2Target);
 ros::Subscriber<std_msgs::Float32> sub4("arm_pose_target_re/d0", &readE3Target);
 ros::Subscriber<std_msgs::Float32> sub5("arm_pose_target_re/succ", &readE4Target);
+
+
+// init stepper motors
+AccelStepper stepper1(1, step1, dir1);
+AccelStepper stepper2(1, step2, dir2);
+AccelStepper stepper3(1, step3, dir3);
+AccelStepper stepper4(1, step4, dir4);
 
 void setup() {
   //Serial.begin(57600);
@@ -207,15 +132,19 @@ void setup() {
   nh.subscribe(sub5);
   nh.loginfo("Inicializando Arduino");
 
-  // set the pins for the stepper motors as outputs
-  pinMode(step1, OUTPUT);
-  pinMode(dir1, OUTPUT);
-  pinMode(step2, OUTPUT);
-  pinMode(dir2, OUTPUT);
-  pinMode(step3, OUTPUT);
-  pinMode(dir3, OUTPUT);
-  pinMode(step4, OUTPUT);
-  pinMode(dir4, OUTPUT);
+  stepper1.setMaxSpeed(maxSpeed);
+  stepper1.setAcceleration(maxAccel);
+  stepper2.setMaxSpeed(maxSpeed);
+  stepper2.setAcceleration(maxAccel);
+  stepper3.setMaxSpeed(maxSpeed);
+  stepper3.setAcceleration(maxAccel);
+  stepper4.setMaxSpeed(maxSpeed);
+  stepper4.setAcceleration(maxAccel);
+
+  stepper1.setCurrentPosition(0);
+  stepper2.setCurrentPosition(0);
+  stepper3.setCurrentPosition(0);
+  stepper4.setCurrentPosition(0);
 
   // set the pins for the status leds as outputs
   //pinMode(led1, OUTPUT);
@@ -228,98 +157,21 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  // set the pins for the potentiometers as inputs
-  pinMode(pot1, INPUT);
-  pinMode(pot2, INPUT);
-  pinMode(pot3, INPUT);
-
   // blink the status leds for 1 second
   nh.loginfo("Arduino inicializado");
 }
 
 void loop() {
-  //nh.loginfo("LoopStart");
-  // run the ros node
   nh.spinOnce();
-  // delay (of about 50-250)
-  //delay(10);
+  //float currentHeight = readUltrasonic();
 
-  // read the potentiometers and ultrasonic sensor
-  float pot1_angle = readPot(pot1);
-  float pot2_angle = readPot(pot2);
-  float pot3_angle = readPot(pot3);
-  float ultrasonic = readUltrasonic();
+  stepper1.moveTo(targetToSteps(theta1, ratio1, stepsPerRev1));
+  stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
+  stepper3.moveTo(targetToSteps(theta2, ratio3, stepsPerRev3));
+  stepper4.moveTo(targetToSteps(theta3, ratio4, stepsPerRev4));
 
-  // log the potentiometer angles and ultrasonic sensor
-  //nh.loginfo("Pot1: " + String(pot1_angle));
-  //nh.loginfo("Pot2: " + String(pot2_angle));
-  //nh.loginfo("Pot3: " + String(pot3_angle));
-  //nh.loginfo("Ultrasonic: " + String(ultrasonic));
-  
-  // calculate the errors for the PID controller
-  error1 = theta1 - pot1_angle;
-  error2 = theta2 - pot2_angle;
-  error3 = theta3 - pot3_angle;
-  error4 = height - ultrasonic;
-
-  // calculate the control signals for the PID controller
-  u1 = PID(error1, error1_old, error1_sum, Kp1, Ki1, Kd1);
-  u2 = PID(error2, error2_old, error2_sum, Kp2, Ki2, Kd2);
-  u3 = PID(error3, error3_old, error3_sum, Kp3, Ki3, Kd3);
-  u4 = PID(error4, error4_old, error4_sum, Kp4, Ki4, Kd4);
-
-  // calculate the step signals for the stepper motors
-  int step1_signal = step(u1);
-  int step2_signal = step(u2);
-  int step3_signal = step(u3);
-  int step4_signal = step(u4);
-
-  // set the direction of the stepper motors
-  setDir(step1_signal, dir1);
-  setDir(step2_signal, dir2);
-  setDir(step3_signal, dir3);
-  setDir(step4_signal, dir4);
-
-  // set the step signal for the stepper motors
-  digitalWrite(step1, step1_signal);
-  digitalWrite(step2, step2_signal);
-  digitalWrite(step3, step3_signal);
-  digitalWrite(step4, step4_signal);
-
-  // update the errors for the PID controller
-  error1_old = error1;
-  error2_old = error2;
-  error3_old = error3;
-  error4_old = error4;
-
-  // update the error sums for the PID controller
-  error1_sum += error1;
-  error2_sum += error2;
-  error3_sum += error3;
-  error4_sum += error4;
-
-  // check if the emergency stop is pressed
-  /*if (digitalRead(stop) == HIGH) {
-    // stop the stepper motors
-    digitalWrite(step1, LOW);
-    digitalWrite(step2, LOW);
-    digitalWrite(step3, LOW);
-    digitalWrite(step4, LOW);
-
-    // turn on the status leds
-    digitalWrite(led1, HIGH);
-    digitalWrite(led2, HIGH);
-
-    // wait for the emergency stop to be released
-    while (digitalRead(stop) == HIGH) {
-      nh.spinOnce();
-    }
-
-    nh.logfatal("Emergency stop pressed!");
-
-    // turn off the status leds
-    digitalWrite(led1, LOW);
-    digitalWrite(led2, LOW);
-  } */
-  //nh.loginfo("LoopEnd");
+  stepper1.run();
+  stepper2.run();
+  stepper3.run();
+  stepper4.run();
 }
