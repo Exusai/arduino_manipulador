@@ -5,17 +5,17 @@
 // code for arduino nano
 // uses ultrasonic sensor to read the height of the arm
 // The target position for each joint is read from the topics /arm_pose_target_re/q1, /arm_pose_target_re/q2, /arm_pose_target_re/q3, /arm_pose_target_re/d0, /arm_pose_target_re/succ
-float maxSpeed = 1000; // max speed for the stepper motors
+float maxSpeed = 2000; // max speed for the stepper motors
 float maxAccel = 500; // max acceleration for the stepper motors
 
 // every motor has its own gear ratio
-float ratio1 = 1;
+float ratio1 = 31.4894;
 float ratio2 = 1; // corresponds to how may rotations of the motor are needed to move 1m up or down
 float ratio3 = 1;
 float ratio4 = 1;
 
 // the number of steps per revolution for each motor
-float stepsPerRev1 = 200;
+float stepsPerRev1 = 800;
 float stepsPerRev2 = 200;
 float stepsPerRev3 = 200;
 float stepsPerRev4 = 200;
@@ -63,8 +63,9 @@ long targetToSteps(float target, float ratio, float stepsPerRev) {
 // function that returns the number of steps needed to move the ar to the target height
 // using the gear ratio and the number of steps per meter
 long heightToSteps(float target, float ratio, float stepsPerMeter) {
-  // the height is converted to meters
-  return (target * ratio * stepsPerMeter);
+  double stepsDouble = target * ratio * stepsPerMeter;
+  long steps = round(stepsDouble);
+  return steps;
 }
 
 
@@ -170,14 +171,14 @@ void loop() {
   // delay (of about 50-250)
   //delay(10);
 
-  stepper1.moveTo(800);
-  /* stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
+  stepper1.moveTo(targetToSteps(theta1, ratio1, stepsPerRev1));
+  stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
   stepper3.moveTo(targetToSteps(theta2, ratio3, stepsPerRev3));
-  stepper4.moveTo(targetToSteps(theta3, ratio4, stepsPerRev4)); */
+  stepper4.moveTo(targetToSteps(theta3, ratio4, stepsPerRev4));
 
   stepper1.run();
-  /* stepper2.run();
+  stepper2.run();
   stepper3.run();
-  stepper4.run(); */
+  stepper4.run();
 
 }
