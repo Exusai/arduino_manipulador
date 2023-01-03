@@ -170,14 +170,14 @@ void loop() {
   // delay (of about 50-250)
   //delay(10);
 
-  stepper1.moveTo(targetToSteps(theta1, ratio1, stepsPerRev1));
-  stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
+  stepper1.moveTo(800);
+  /* stepper2.moveTo(heightToSteps(height, ratio2, stepsPerRev2));
   stepper3.moveTo(targetToSteps(theta2, ratio3, stepsPerRev3));
-  stepper4.moveTo(targetToSteps(theta3, ratio4, stepsPerRev4));
+  stepper4.moveTo(targetToSteps(theta3, ratio4, stepsPerRev4)); */
 
   stepper1.run();
-  stepper2.run();
+  /* stepper2.run();
   stepper3.run();
-  stepper4.run();
+  stepper4.run(); */
 
 }
