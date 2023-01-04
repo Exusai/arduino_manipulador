@@ -10,9 +10,9 @@ float maxAccel = 500; // max acceleration for the stepper motors
 
 // every motor has its own gear ratio
 float ratio1 = 31.4894;
-float ratio2 = 1; // corresponds to how may rotations of the motor are needed to move 1m up or down
-float ratio3 = 1;
-float ratio4 = 1;
+float ratio2 = 20; // corresponds to how may rotations of the motor are needed to move 1m up or down
+float ratio3 = 10;
+float ratio4 = 5;
 
 // the number of steps per revolution for each motor
 float stepsPerRev1 = 800;
@@ -40,10 +40,10 @@ AccelStepper stepper3(1, step3, dir3);
 AccelStepper stepper4(1, step4, dir4);
 
 // initialy the joint angles are set to 0 and height to 0
-float theta1 = 0;
-float theta2 = 0;
-float theta3 = 0;
-float height = 0;
+float theta1 = 0.0;
+float theta2 = 0.0;
+float theta3 = 0.0;
+float height = 0.0;
 
 // control for the gripper, 0 is open and 1 is closed
 float gripper = 0;
@@ -73,47 +73,47 @@ long heightToSteps(float target, float ratio, float stepsPerMeter) {
 // function to read arm pose from the topic /arm_pose_target and set the target angles and height
 void readE0Target(const std_msgs::Float32& msg) {
   theta1 = msg.data;
-  char log_msg[35];
+  /* char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
   dtostrf(msg.data, 6, 2, result); // Leave room for too large numbers!
   sprintf(log_msg,"Nuevo target para E0: %sdeg", result);
-  nh.loginfo(log_msg);
+  nh.loginfo(log_msg); */
 }
 
 void readE1Target(const std_msgs::Float32& msg) {
   theta2 = msg.data;
-  char log_msg[35];
+  /* char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
   dtostrf(msg.data, 6, 2, result); // Leave room for too large numbers!
   sprintf(log_msg,"Nuevo target para E1: %sdeg", result);
-  nh.loginfo(log_msg);
+  nh.loginfo(log_msg); */
 }
 
 void readE2Target(const std_msgs::Float32& msg) {
   theta3 = msg.data;
-  char log_msg[35];
+  /* char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
   dtostrf(msg.data, 6, 2, result); // Leave room for too large numbers!
   sprintf(log_msg,"Nuevo target para E2: %sdeg", result);
-  nh.loginfo(log_msg);
+  nh.loginfo(log_msg); */
 }
 
 void readE3Target(const std_msgs::Float32& msg) {
   height = msg.data;
-  char log_msg[35];
+  /* char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
   dtostrf(msg.data, 6, 2, result); // Leave room for too large numbers!
   sprintf(log_msg,"Nuevo target para E3: %sm", result);
-  nh.loginfo(log_msg);
+  nh.loginfo(log_msg); */
 }
 
 void readE4Target(const std_msgs::Float32& msg) {
   gripper = msg.data;
-  char log_msg[35];
+  /* char log_msg[35];
   char result[8]; // Buffer big enough for 7-character float
   dtostrf(msg.data, 6, 2, result); // Leave room for too large numbers!
   sprintf(log_msg,"Grip force: %s", result);
-  nh.loginfo(log_msg);
+  nh.loginfo(log_msg); */
 }
 
 // create a subscriber to the topic "arm_pose_target" of type ArmPose
